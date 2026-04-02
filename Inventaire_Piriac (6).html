@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Inventaire Piriac</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#EAECF0;overflow-x:hidden}
+
+/* ── LOAD SCREEN ── */
+#screen-load{position:fixed;inset:0;background:#1A3A5C;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:16px;padding:28px;z-index:1000}
+.ls-icon{font-size:50px}
+.ls-title{font-size:22px;font-weight:700;color:#fff;text-align:center;line-height:1.3}
+.ls-sub{font-size:13px;color:rgba(255,255,255,.5);text-align:center;line-height:1.5;max-width:300px}
+.ls-btn{width:100%;max-width:300px;padding:15px;border:none;border-radius:14px;font-size:16px;
+  font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}
+.ls-btn.primary{background:#fff;color:#1A3A5C}
+.ls-btn.secondary{background:rgba(255,255,255,.12);color:#fff}
+.ls-btn:active{opacity:.8;transform:scale(.98)}
+.ls-divider{width:100%;max-width:300px;display:flex;align-items:center;gap:8px}
+.ls-divider::before,.ls-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.12)}
+.ls-divider span{font-size:11px;color:rgba(255,255,255,.25)}
+#ls-err{color:#FCA5A5;font-size:13px;text-align:center;display:none;max-width:300px}
+#ls-last{font-size:11px;color:rgba(255,255,255,.28);text-align:center}
+#file-input{display:none}
+
+/* ── APP SCREEN ── */
+#screen-app{display:none;min-height:100vh}
+
+/* ── TOPBAR ── */
+#topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:#1A3A5C;
+  padding:10px 12px 0}
+.tb-row1{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+#tb-title{font-size:14px;font-weight:700;color:#fff;flex:1}
+#btn-reload{background:rgba(255,255,255,.15);border:none;color:#fff;
+  border-radius:7px;padding:5px 9px;font-size:11px;cursor:pointer}
+.tb-stats{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+#stat-prog{font-size:13px;font-weight:700;color:#fff}
+#stat-section{font-size:11px;color:rgba(255,255,255,.6);flex:1}
+#prog-bar{height:3px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden;margin-bottom:5px}
+#prog-fill{height:100%;background:#4ADE80;width:0%;transition:width .4s}
+
+/* ── VIEW TOGGLE ── */
+.view-toggle{display:flex;gap:0;background:rgba(255,255,255,.12);border-radius:8px;
+  padding:2px;margin-bottom:6px;width:fit-content}
+.vt-btn{padding:4px 14px;border:none;background:transparent;color:rgba(255,255,255,.6);
+  font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;transition:all .15s}
+.vt-btn.on{background:#fff;color:#1A3A5C}
+
+/* ── FILTERS ── */
+.flt-row{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.flt-btn{padding:3px 10px;border-radius:20px;border:1.5px solid rgba(255,255,255,.28);
+  background:transparent;color:rgba(255,255,255,.75);font-size:11px;cursor:pointer;white-space:nowrap}
+.flt-btn.on{background:#fff;color:#1A3A5C;font-weight:700;border-color:#fff}
+
+/* ── TABS (allées & pontons) ── */
+.tabs-wrap{overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;margin-bottom:4px;padding-bottom:1px}
+.tabs-wrap::-webkit-scrollbar{display:none}
+.tabs-wrap{display:flex;gap:0}
+.tab{display:inline-block;padding:8px 13px;font-size:12px;font-weight:600;
+  color:rgba(255,255,255,.48);background:transparent;border:none;cursor:pointer;
+  border-bottom:3px solid transparent;white-space:nowrap;transition:color .15s}
+.tab.on{color:#fff;border-bottom-color:#4ADE80}
+.tab:active{opacity:.7}
+
+/* ── CONTENT ── */
+#content{padding:6px 8px 100px}
+
+/* ── FACE-TO-FACE ── */
+.face-hdr{display:flex;align-items:center;padding:5px 4px 3px;border-bottom:2px solid #1A3A5C;
+  margin-bottom:4px}
+.fh-left,.fh-right{font-size:11px;font-weight:700;color:#1A3A5C;flex:1}
+.fh-right{text-align:right}
+.fh-mid{width:28px}
+.face-row{display:grid;grid-template-columns:1fr 28px 1fr;gap:4px;margin-bottom:4px;align-items:stretch}
+.face-cell{display:flex;flex-direction:column}
+.rang{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;
+  color:#aaa;background:#fff;border-radius:4px;min-height:40px}
+
+/* ── SINGLE SECTION ── */
+.section-hdr{font-size:12px;font-weight:700;color:#fff;background:#2C5F8A;
+  border-radius:6px;padding:4px 10px;margin:8px 0 4px;display:inline-block}
+
+/* ── CARD ── */
+.card{border-radius:10px;border:1.5px solid #D1D5DB;overflow:hidden;display:flex;
+  flex-direction:column;background:#fff;min-height:72px}
+.card.ras{opacity:.42;border-color:#9CA3AF}
+.card.touched{border-color:#3B82F6;border-width:2px}
+
+/* Statut background */
+.sc-PRESENT .card-body{background:#ECFDF5}
+.sc-ABSENT  .card-body{background:#FEF2F2}
+.sc-LIBRE   .card-body{background:#EFF6FF}
+.sc-ESCALE  .card-body{background:#FFFBEB}
+.sc-NEUTRALISE .card-body{background:#F9FAFB}
+
+.card-body{flex:1;padding:7px 9px 5px;cursor:pointer;min-width:0}
+.card-top{display:flex;align-items:center;gap:4px;margin-bottom:2px;flex-wrap:wrap}
+.card-empl{font-size:12px;font-weight:800;color:#374151}
+.card-name{font-size:14px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.card-name .muted{color:#9CA3AF;font-style:italic;font-weight:400}
+.card-client{font-size:11px;color:#6B7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-date{font-size:10px;color:#9CA3AF;margin-top:1px}
+.card-date.late{color:#DC2626;font-weight:700}
+.card-terrain{font-size:11px;font-weight:700;margin-top:2px}
+.tc-PRESENT{color:#059669}.tc-ABSENT{color:#DC2626}.tc-ESCALE{color:#D97706}.tc-LIBRE{color:#2563EB}
+.card-obs{font-size:10px;color:#D97706;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-sub{font-size:10px;padding:2px 4px;margin-top:3px;border-radius:4px;border-left:2px solid #ccc}
+.sc-PRESENT .card-sub{background:#ECFDF5;border-color:#059669}
+.sc-ABSENT  .card-sub{background:#FEF2F2;border-color:#DC2626}
+.sc-LIBRE   .card-sub{background:#EFF6FF;border-color:#3B82F6}
+.sc-ESCALE  .card-sub{background:#FFFBEB;border-color:#D97706}
+.sub-lbl{font-weight:700}.sub-cl{color:#6B7280}
+
+/* Indicators */
+.ind{display:inline-flex;align-items:center;justify-content:center;
+  width:16px;height:16px;border-radius:50%;font-size:9px;font-weight:900;color:#fff}
+.ind-alert{background:#EF4444}
+.ind-incoh{background:#F59E0B}
+.ind-nf{background:#8B5CF6;border-radius:4px;width:auto;padding:0 3px;font-size:8px}
+
+/* Payé */
+.paye{font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px}
+.paye.ok{background:#DCFCE7;color:#166534}
+.paye.ko{background:#FEE2E2;color:#991B1B}
+
+/* ── ACTION BUTTONS ── */
+.card-actions{display:flex;border-top:1px solid rgba(0,0,0,.06)}
+.btn-act{flex:1;border:none;cursor:pointer;padding:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:1px;min-height:52px;font-size:20px;
+  transition:filter .1s}
+.btn-act:active{filter:brightness(.65)}
+.btn-act+.btn-act{border-left:1px solid rgba(0,0,0,.06)}
+.btn-act span{font-size:9px;font-weight:700;line-height:1;opacity:.8}
+.btn-p{background:#DCFCE7;color:#166534}
+.btn-a{background:#FEE2E2;color:#991B1B}
+.btn-e{background:#FEF3C7;color:#92400E}
+.btn-r{background:#F1F5F9;color:#475569;font-size:14px;font-weight:800}
+.btn-act.sel{filter:brightness(.72);box-shadow:inset 0 0 0 2.5px rgba(0,0,0,.24)}
+
+/* ── BOTTOM BAR ── */
+#bottom-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;
+  border-top:1px solid #E5E7EB;padding:8px 12px;display:flex;gap:7px;z-index:99}
+#btn-rapport{flex:2;padding:13px;background:#1A3A5C;color:#fff;border:none;
+  border-radius:11px;font-size:14px;font-weight:700;cursor:pointer}
+#btn-rapport:active{background:#0f2540}
+#btn-reset{flex:1;padding:13px;background:#F3F4F6;color:#374151;border:none;
+  border-radius:11px;font-size:13px;font-weight:600;cursor:pointer}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+  background:#1A3A5C;color:#fff;padding:9px 18px;border-radius:22px;
+  font-size:13px;font-weight:600;z-index:500;opacity:0;transition:opacity .2s;
+  pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1}
+
+/* ── OVERLAY + PANEL ── */
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:none}
+#overlay.on{display:block}
+#panel{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:20px 20px 0 0;
+  box-shadow:0 -6px 40px rgba(0,0,0,.18);z-index:300;transform:translateY(100%);
+  transition:transform .28s cubic-bezier(.4,0,.2,1);max-height:88vh;overflow-y:auto;
+  padding:0 18px 44px}
+#panel.open{transform:translateY(0)}
+.p-handle{width:40px;height:4px;background:#E5E7EB;border-radius:2px;margin:14px auto 16px}
+#p-close{position:absolute;top:14px;right:18px;background:none;border:none;
+  font-size:26px;color:#ccc;cursor:pointer;line-height:1}
+#p-empl{font-size:12px;font-weight:700;color:#9CA3AF;margin-bottom:3px}
+#p-name{font-size:22px;font-weight:700;color:#1A3A5C;margin-bottom:2px;line-height:1.2}
+#p-sub{font-size:13px;color:#6B7280;margin-bottom:12px;line-height:1.4}
+.p-alert{border-radius:10px;padding:9px 13px;font-size:13px;margin-bottom:8px}
+.p-alert.danger{background:#FEF2F2;color:#991B1B}
+.p-alert.warn{background:#FFFBEB;color:#92400E}
+.p-alert.info{background:#EFF9E8;color:#166534}
+.p-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F3F4F6;font-size:13px}
+.p-key{color:#9CA3AF}.p-val{font-weight:500;color:#111827;text-align:right;flex:1;margin-left:10px}
+#p-sbtns{display:flex;gap:6px;margin:14px 0 6px;flex-wrap:wrap}
+.sbtn{flex:1;min-width:60px;padding:13px 4px;border:none;border-radius:12px;
+  font-size:13px;font-weight:700;cursor:pointer}
+.sbtn:active{transform:scale(.96)}
+.sbp{background:#DCFCE7;color:#166534}.sba{background:#FEE2E2;color:#991B1B}
+.sbe{background:#FEF3C7;color:#92400E}.sbl{background:#DBEAFE;color:#1E40AF}
+.sbc{background:#F1F5F9;color:#374151}
+.sbtn.on{box-shadow:0 0 0 3px rgba(0,0,0,.2);filter:brightness(.86)}
+.p-label{font-size:11px;font-weight:700;color:#6B7280;margin:14px 0 5px;
+  text-transform:uppercase;letter-spacing:.5px}
+textarea{width:100%;border:1.5px solid #E5E7EB;border-radius:12px;padding:10px 13px;
+  font-size:14px;font-family:inherit;resize:vertical;min-height:80px}
+#p-save{width:100%;margin-top:14px;padding:15px;background:#1A3A5C;color:#fff;
+  border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer}
+#p-save:active{background:#0f2540}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOAD SCREEN ═══ -->
+<div id="screen-load">
+  <div class="ls-icon">&#9875;</div>
+  <div class="ls-title">Inventaire Piriac</div>
+  <div class="ls-sub">Port de Piriac-sur-Mer — charge le fichier CSV genere depuis PortLogique</div>
+  <button class="ls-btn primary" onclick="document.getElementById('file-input').click()">
+    &#128194; Charger l'etat de pointage
+  </button>
+  <input type="file" id="file-input" accept=".csv">
+  <div id="ls-err"></div>
+  <div class="ls-divider"><span>ou</span></div>
+  <button class="ls-btn secondary" onclick="useCurrent()">
+    &#8635; Reprendre la session en cours
+  </button>
+  <div id="ls-last"></div>
+</div>
+
+<!-- ═══ APP SCREEN ═══ -->
+<div id="screen-app">
+
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <div class="tb-row1">
+      <div id="tb-title">Inventaire Piriac</div>
+      <button id="btn-reload">Recharger</button>
+    </div>
+    <div class="tb-stats">
+      <span id="stat-prog">0/0</span>
+      <span id="stat-section"></span>
+    </div>
+    <div id="prog-bar"><div id="prog-fill"></div></div>
+    <div class="view-toggle">
+      <button id="btn-view-allee" class="vt-btn on">Par allee</button>
+      <button id="btn-view-ponton" class="vt-btn">Par ponton</button>
+    </div>
+    <div class="flt-row">
+      <button class="flt-btn on" data-f="all">Tout</button>
+      <button class="flt-btn" data-f="non_saisi">Non saisis</button>
+      <button class="flt-btn" data-f="alerte" style="border-color:#FCA5A5;color:#FCA5A5">Alertes</button>
+    </div>
+    <!-- Allée tabs -->
+    <div class="tabs-wrap" id="tabs-allee">
+      <div id="allee-tabs-inner" style="display:inline-flex;gap:0"></div>
+    </div>
+    <!-- Ponton tabs -->
+    <div class="tabs-wrap" id="tabs-ponton" style="display:none">
+      <div id="ponton-tabs-inner" style="display:inline-flex;gap:0"></div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content"></div>
+
+  <!-- TOAST -->
+  <div id="toast"></div>
+
+  <!-- BOTTOM BAR -->
+  <div id="bottom-bar">
+    <button id="btn-rapport">&#128196; Rapport corrections</button>
+    <button id="btn-reset">Reinit.</button>
+  </div>
+
+</div><!-- /screen-app -->
+
+<!-- PANEL -->
+<div id="overlay"></div>
+<div id="panel">
+  <div class="p-handle"></div>
+  <button id="p-close">&#215;</button>
+  <div id="p-empl"></div>
+  <div id="p-name"></div>
+  <div id="p-sub"></div>
+  <div id="p-alerts"></div>
+  <div id="p-rows"></div>
+  <div id="p-sbtns"></div>
+  <div class="p-label">Observation terrain</div>
+  <textarea id="f-obs" placeholder="Bateau inconnu, amarrage, escale non fermee, anomalie..."></textarea>
+  <button id="p-save">Enregistrer l'observation</button>
+</div>
+
+<script>
+/* ============================================================
+   PIRIAC INVENTAIRE — Application terrain unique
+   Version finale — iPhone + iPad
+   ============================================================ */
+
+// ---- CONSTANTES ----
+var STORAGE_KEY = 'piriac_v11';
+var today = new Date().toISOString().split('T')[0];
+
+// Ordre des allées pour la tournée
+var ALLEES = [
+  { id:'A1',  label:'Allée 1',  desc:'K + A impairs',
+    gauche:[{p:'K',s:'all',lbl:'Ponton K'}],
+    droite:[{p:'A',s:'impairs',lbl:'A impairs'}] },
+  { id:'A2',  label:'Allée 2',  desc:'A pairs + B impairs',
+    gauche:[{p:'A',s:'pairs',lbl:'A pairs'}],
+    droite:[{p:'B',s:'impairs',lbl:'B impairs'}] },
+  { id:'A3',  label:'Allée 3',  desc:'B pairs + C impairs',
+    gauche:[{p:'B',s:'pairs',lbl:'B pairs'}],
+    droite:[{p:'C',s:'impairs',lbl:'C impairs'}] },
+  { id:'A4',  label:'Allée 4',  desc:'C pairs + D impairs',
+    gauche:[{p:'C',s:'pairs',lbl:'C pairs'}],
+    droite:[{p:'D',s:'impairs',lbl:'D impairs'}] },
+  { id:'A5',  label:'Allée 5',  desc:'D pairs + E impairs',
+    gauche:[{p:'D',s:'pairs',lbl:'D pairs'}],
+    droite:[{p:'E',s:'impairs',lbl:'E impairs'}] },
+  { id:'A6',  label:'Allée 6',  desc:'E pairs + F impairs',
+    gauche:[{p:'E',s:'pairs',lbl:'E pairs'}],
+    droite:[{p:'F',s:'impairs',lbl:'F impairs'}] },
+  { id:'A7',  label:'Allée 7',  desc:'F pairs + G impairs',
+    gauche:[{p:'F',s:'pairs',lbl:'F pairs'}],
+    droite:[{p:'G',s:'impairs',lbl:'G impairs'}] },
+  { id:'A8',  label:'Allée 8',  desc:'G pairs + H impairs',
+    gauche:[{p:'G',s:'pairs',lbl:'G pairs'}],
+    droite:[{p:'H',s:'impairs',lbl:'H impairs'}] },
+  { id:'A9',  label:'Allée 9',  desc:'H pairs + I impairs',
+    gauche:[{p:'H',s:'pairs',lbl:'H pairs'}],
+    droite:[{p:'I',s:'impairs',lbl:'I impairs'}] },
+  { id:'A10', label:'Allée 10', desc:'I pairs seuls',
+    gauche:[{p:'I',s:'pairs',lbl:'I pairs'}],
+    droite:[] },
+  { id:'JP',  label:'J + P',    desc:'Pontons J et P',
+    gauche:[{p:'J',s:'all',lbl:'Ponton J'}],
+    droite:[{p:'P',s:'all',lbl:'Ponton P'}] },
+  { id:'SP',  label:'Spéciaux', desc:'Pêche + CS',
+    gauche:[{p:'PECHE',s:'all',lbl:'Pêche'}],
+    droite:[{p:'CS',s:'all',lbl:'CS'}] },
+  { id:'ES',  label:'Zone ES',  desc:'Emplacements temporaires',
+    gauche:[{p:'ATTENTE',s:'all',lbl:'Zone ES'}],
+    droite:[] }
+];
+
+// ---- ÉTAT ----
+var inv = {};         // empl -> berth object
+var saisieOrder = []; // ordre de saisie pour le rapport
+var viewMode = 'allee';   // 'allee' | 'ponton'
+var currentAllee = 'A1';
+var currentPonton = 'A'; // will be set to first available ponton
+var filterMode = 'all';   // 'all' | 'non_saisi' | 'alerte'
+var curEmpl = null;
+
+// ---- STORAGE ----
+function saveState() {
+  var snap = {};
+  Object.values(inv).forEach(function(b) {
+    if (b.terrain !== null || b.obs || b.ras)
+      snap[b.empl] = { terrain: b.terrain, obs: b.obs, ras: !!b.ras };
+  });
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      snap: snap, order: saisieOrder
+    }));
+  } catch(e) {}
+}
+function restoreState() {
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    var data = JSON.parse(raw);
+    var snap = data.snap || {};
+    saisieOrder = data.order || [];
+    Object.keys(snap).forEach(function(e) {
+      if (inv[e]) Object.assign(inv[e], snap[e]);
+    });
+  } catch(e) {}
+}
+function clearState() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+}
+
+// ---- PARSER ----
+function parseCSV(text) {
+  var lines = text.split('\n');
+  var result = [];
+  // Skip header line
+  for (var i = 1; i < lines.length; i++) {
+    var line = lines[i].trim();
+    if (!line) continue;
+    // Parse CSV line (handle quoted fields)
+    var cols = [];
+    var cur = '', inQ = false;
+    for (var j = 0; j < line.length; j++) {
+      var ch = line[j];
+      if (ch === '"' && !inQ) { inQ = true; }
+      else if (ch === '"' && inQ) { inQ = false; }
+      else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
+      else { cur += ch; }
+    }
+    cols.push(cur);
+    if (cols.length < 12) continue;
+    if (cols[0] === 'SUPPRIMER') continue;
+    result.push({
+      ponton:  cols[0],
+      empl:    cols[1],
+      type:    cols[2],
+      bateau:  cols[3],
+      modele:  cols[4],
+      immat:   cols[5],
+      client:  cols[6],
+      depart:  cols[7],
+      retour:  cols[8],
+      facture: cols[9],
+      paye:    cols[10],
+      statut:  cols[11]
+    });
+  }
+  return result;
+}
+
+function loadData(berths) {
+  var old = {};
+  Object.values(inv).forEach(function(b) {
+    old[b.empl] = { terrain: b.terrain, obs: b.obs, ras: !!b.ras };
+  });
+  inv = {};
+  berths.forEach(function(b) {
+    inv[b.empl] = Object.assign({}, b, { terrain: null, obs: '', ras: false });
+    if (old[b.empl]) Object.assign(inv[b.empl], old[b.empl]);
+  });
+  saisieOrder = [];
+  restoreState();
+  localStorage.setItem('lastLoad', new Date().toLocaleString('fr-FR'));
+  localStorage.setItem('lastCount', berths.length);
+}
+
+// ---- HELPERS ----
+function numOf(e) { var m = e.match(/\d+/); return m ? parseInt(m[0]) : 0; }
+
+function getSide(ponton, side) {
+  var all = Object.values(inv)
+    .filter(function(b) { return b.ponton === ponton; })
+    .sort(function(a, b) { return numOf(a.empl) - numOf(b.empl); });
+  var reg = all.filter(function(b) { return numOf(b.empl) < 200; });
+  if (side === 'all')     return all;
+  if (side === 'pairs')   return reg.filter(function(b) { return numOf(b.empl) % 2 === 0; });
+  if (side === 'impairs') return reg.filter(function(b) { return numOf(b.empl) % 2 === 1; });
+  return reg;
+}
+
+// Pour le ponton C : grouper C001 avec C001B (sous-place)
+function getCGroups(side) {
+  // side = 'pairs' ou 'impairs'
+  var reg = Object.values(inv)
+    .filter(function(b) { return b.ponton === 'C' && numOf(b.empl) < 200; })
+    .sort(function(a, b) { return numOf(a.empl) - numOf(b.empl); });
+  var byNum = {};
+  reg.forEach(function(b) {
+    var n = numOf(b.empl);
+    if (!byNum[n]) byNum[n] = { main: null, sub: null };
+    if (b.empl.endsWith('B')) byNum[n].sub = b;
+    else byNum[n].main = b;
+  });
+  var nums = Object.keys(byNum).map(Number).sort(function(a,b){return a-b;});
+  if (side === 'pairs')   nums = nums.filter(function(n) { return n % 2 === 0; });
+  if (side === 'impairs') nums = nums.filter(function(n) { return n % 2 === 1; });
+  return nums.map(function(n) { return byNum[n]; });
+}
+
+function isAlert(b) {
+  return (b.statut === 'ESCALE' && b.depart && b.depart < today) ||
+         (b.statut === 'ABSENT' && b.retour && b.retour < today);
+}
+function isIncoherent(b) {
+  return !!(b.terrain && b.terrain !== b.statut && !b.ras);
+}
+function isNonFacture(b) {
+  return b.statut === 'PRESENT' && !!b.bateau && b.facture === '0';
+}
+function isSaisi(b) { return b.ras || b.terrain !== null; }
+
+function getAlleeBerths(allee) {
+  var res = [];
+  allee.gauche.concat(allee.droite).forEach(function(side) {
+    getSide(side.p, side.s).forEach(function(b) {
+      res.push(b);
+    });
+  });
+  return res;
+}
+
+// ---- STATS ----
+function computeStats() {
+  var all = Object.values(inv);
+  var done = all.filter(isSaisi).length;
+  return { total: all.length, done: done, alerts: all.filter(isAlert).length };
+}
+
+function alleeDone(allee) {
+  var berths = getAlleeBerths(allee);
+  if (!berths.length) return true;
+  return berths.filter(isSaisi).length === berths.length;
+}
+
+function alleeCounts(allee) {
+  var berths = getAlleeBerths(allee);
+  return { done: berths.filter(isSaisi).length, total: berths.length };
+}
+
+// ---- TOAST ----
+var toastTimer = null;
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 2000);
+}
+
+// ---- ACTION ----
+function doAction(empl, action) {
+  var b = inv[empl];
+  if (!b) return;
+  if (action === 'RAS') {
+    b.terrain = null;
+    b.ras = true;
+    // Remove from saisie order if was there
+    saisieOrder = saisieOrder.filter(function(e) { return e !== empl; });
+  } else {
+    b.terrain = action;
+    b.ras = false;
+    // Add to saisie order if not already there
+    if (saisieOrder.indexOf(empl) < 0) saisieOrder.push(empl);
+  }
+  saveState();
+  renderCurrent();
+  updateTopbar();
+}
+
+// ---- SCREEN TRANSITIONS ----
+function showLoad() {
+  document.getElementById('screen-load').style.display = 'flex';
+  document.getElementById('screen-app').style.display = 'none';
+  var last = localStorage.getItem('lastLoad');
+  var cnt  = localStorage.getItem('lastCount');
+  var el   = document.getElementById('ls-last');
+  el.textContent = last ? ('Dernier chargement : ' + last + ' — ' + cnt + ' emplacements') : '';
+}
+
+function showApp() {
+  document.getElementById('screen-load').style.display = 'none';
+  document.getElementById('screen-app').style.display  = 'block';
+  buildAlleeTabs();
+  buildPontonTabs();
+  updateTopbar();
+  renderCurrent();
+}
+
+function useCurrent() {
+  if (!Object.keys(inv).length) {
+    showErr('Aucune donnée — charge un fichier PortLogique.');
+    return;
+  }
+  showApp();
+}
+
+function showErr(msg) {
+  var el = document.getElementById('ls-err');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// ---- FILE INPUT ----
+document.getElementById('file-input').addEventListener('change', function(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('ls-err').style.display = 'none';
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      var berths = parseCSV(ev.target.result);
+      if (!berths.length) throw new Error('Aucun emplacement trouve -- verifier le fichier CSV');
+      loadData(berths);
+      showApp();
+    } catch(ex) {
+      showErr('Erreur : ' + ex.message);
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+  this.value = '';
+});
+
+// ---- VIEW MODE TOGGLE ----
+document.getElementById('btn-view-allee').onclick = function() {
+  viewMode = 'allee';
+  document.getElementById('btn-view-allee').classList.add('on');
+  document.getElementById('btn-view-ponton').classList.remove('on');
+  document.getElementById('tabs-allee').style.display = 'flex';
+  document.getElementById('tabs-ponton').style.display = 'none';
+  renderCurrent();
+};
+document.getElementById('btn-view-ponton').onclick = function() {
+  viewMode = 'ponton';
+  document.getElementById('btn-view-allee').classList.remove('on');
+  document.getElementById('btn-view-ponton').classList.add('on');
+  document.getElementById('tabs-allee').style.display = 'none';
+  document.getElementById('tabs-ponton').style.display = 'flex';
+  buildPontonTabs();
+  renderCurrent();
+};
+
+// ---- FILTER BUTTONS ----
+document.querySelectorAll('.flt-btn').forEach(function(btn) {
+  btn.onclick = function() {
+    document.querySelectorAll('.flt-btn').forEach(function(b) { b.classList.remove('on'); });
+    btn.classList.add('on');
+    filterMode = btn.dataset.f;
+    renderCurrent();
+  };
+});
+
+// ---- RELOAD ----
+document.getElementById('btn-reload').onclick = function() { showLoad(); };
+
+// ---- ALLÉE TABS ----
+function buildAlleeTabs() {
+  var bar = document.getElementById('allee-tabs-inner');
+  bar.innerHTML = '';
+  ALLEES.forEach(function(a) {
+    var btn = document.createElement('button');
+    btn.className = 'tab' + (a.id === currentAllee ? ' on' : '');
+    var counts = alleeCounts(a);
+    var done = counts.done === counts.total && counts.total > 0;
+    btn.innerHTML = (done ? '&#10003; ' : '') + a.label;
+    btn.dataset.id = a.id;
+    btn.onclick = function() {
+      currentAllee = a.id;
+      bar.querySelectorAll('.tab').forEach(function(b) { b.classList.remove('on'); });
+      btn.classList.add('on');
+      btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      renderCurrent();
+    };
+    bar.appendChild(btn);
+  });
+}
+
+// ---- PONTON TABS ----
+var PONTON_ORDER = ['A','B','C','D','E','F','G','H','I','J','K','P','CS','PECHE','ATTENTE'];
+function buildPontonTabs() {
+  var bar = document.getElementById('ponton-tabs-inner');
+  bar.innerHTML = '';
+  var firstFound = false;
+  PONTON_ORDER.forEach(function(p) {
+    var berths = Object.values(inv).filter(function(b) { return b.ponton === p; });
+    if (!berths.length) return;
+    if (!firstFound) { currentPonton = p; firstFound = true; }
+    var btn = document.createElement('button');
+    var done = berths.filter(isSaisi).length === berths.length;
+    btn.className = 'tab' + (p === currentPonton ? ' on' : '');
+    btn.innerHTML = (done ? '&#10003; ' : '') + p;
+    btn.dataset.p = p;
+    btn.onclick = function() {
+      currentPonton = p;
+      bar.querySelectorAll('.tab').forEach(function(b) { b.classList.remove('on'); });
+      btn.classList.add('on');
+      btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      renderCurrent();
+    };
+    bar.appendChild(btn);
+  });
+}
+
+// ---- TOPBAR UPDATE ----
+function updateTopbar() {
+  var st = computeStats();
+  document.getElementById('stat-prog').textContent = st.done + '/' + st.total;
+  var pct = st.total > 0 ? Math.round(st.done / st.total * 100) : 0;
+  document.getElementById('prog-fill').style.width = pct + '%';
+  // Current section counter
+  var label = '', counts = { done: 0, total: 0 };
+  if (viewMode === 'allee') {
+    var a = ALLEES.find(function(x) { return x.id === currentAllee; });
+    if (a) { label = a.label; counts = alleeCounts(a); }
+  } else {
+    var berths = Object.values(inv).filter(function(b) { return b.ponton === currentPonton; });
+    label = 'Ponton ' + currentPonton;
+    counts = { done: berths.filter(isSaisi).length, total: berths.length };
+  }
+  document.getElementById('stat-section').textContent = label + ' : ' + counts.done + '/' + counts.total;
+}
+
+// ---- RENDER DISPATCHER ----
+function renderCurrent() {
+  updateTopbar();
+  if (viewMode === 'allee') renderAllee();
+  else renderPonton();
+}
+
+// ---- FILTER FUNCTION ----
+function applyFilter(berths) {
+  if (filterMode === 'non_saisi') return berths.filter(function(b) { return !isSaisi(b); });
+  if (filterMode === 'alerte')    return berths.filter(function(b) { return isAlert(b) || isIncoherent(b); });
+  return berths;
+}
+
+// ---- RENDER ALLÉE ----
+function renderAllee() {
+  var content = document.getElementById('content');
+  content.innerHTML = '';
+  var allee = ALLEES.find(function(a) { return a.id === currentAllee; });
+  if (!allee) return;
+
+  // Build left and right columns
+  var leftSides  = allee.gauche;
+  var rightSides = allee.droite;
+
+  // Collect rows: pair them by index within each side, then show side header
+  var sections = [];
+  leftSides.forEach(function(s) {
+    sections.push({ side: s, pos: 'left' });
+  });
+  rightSides.forEach(function(s) {
+    sections.push({ side: s, pos: 'right' });
+  });
+
+  // For face-to-face view, zip left and right
+  if (leftSides.length === 1 && rightSides.length === 1) {
+    renderFaceToFace(content, leftSides[0], rightSides[0]);
+  } else {
+    // Single column sections (Allée 10, J+P, Spéciaux, ES)
+    leftSides.concat(rightSides).forEach(function(s) {
+      renderSingleSection(content, s);
+    });
+  }
+}
+
+function renderFaceToFace(content, leftDef, rightDef) {
+  var isC_left  = (leftDef.p  === 'C');
+  var isC_right = (rightDef.p === 'C');
+
+  var leftBerths, rightBerths;
+
+  if (isC_left) {
+    leftBerths = getCGroups(leftDef.s);
+    // getCGroups returns [{main, sub}] — flatten for filtering
+    leftBerths = leftBerths.map(function(g) { return g.main || g.sub; }).filter(Boolean);
+  } else {
+    leftBerths = getSide(leftDef.p, leftDef.s);
+  }
+
+  if (isC_right) {
+    rightBerths = getCGroups(rightDef.s);
+    rightBerths = rightBerths.map(function(g) { return g.main || g.sub; }).filter(Boolean);
+  } else {
+    rightBerths = getSide(rightDef.p, rightDef.s);
+  }
+
+  // Section headers
+  var hdr = document.createElement('div');
+  hdr.className = 'face-hdr';
+  hdr.innerHTML = '<span class="fh-left">' + leftDef.lbl + '</span>'
+    + '<span class="fh-mid"></span>'
+    + '<span class="fh-right">' + rightDef.lbl + '</span>';
+  content.appendChild(hdr);
+
+  var maxR = Math.max(leftBerths.length, rightBerths.length);
+  var leftFiltered  = applyFilter(leftBerths);
+  var rightFiltered = applyFilter(rightBerths);
+  var leftSet  = {};
+  var rightSet = {};
+  leftFiltered.forEach(function(b)  { leftSet[b.empl]  = true; });
+  rightFiltered.forEach(function(b) { rightSet[b.empl] = true; });
+
+  for (var i = 0; i < maxR; i++) {
+    var bl = leftBerths[i]  || null;
+    var br = rightBerths[i] || null;
+    // Skip row if both filtered out
+    if (bl && !leftSet[bl.empl] && br && !rightSet[br.empl]) continue;
+    if (bl && !leftSet[bl.empl] && !br) continue;
+    if (br && !rightSet[br.empl] && !bl) continue;
+
+    var row = document.createElement('div');
+    row.className = 'face-row';
+    // Left card
+    var lcell = document.createElement('div'); lcell.className = 'face-cell';
+    if (bl) {
+      // Check for B sub-place (ponton C)
+      var blSub = null;
+      if (isC_left) {
+        var blNum = numOf(bl.empl);
+        blSub = inv[bl.empl.replace(/\d+$/, function(n){return n;}) + 'B'] ||
+                inv['C' + String(blNum).padStart(3,'0') + 'B'] || null;
+      }
+      lcell.appendChild(makeCard(bl, blSub, leftSet[bl.empl] ? 1 : 0.2));
+    }
+    row.appendChild(lcell);
+    // Rang
+    var rn = document.createElement('div'); rn.className = 'rang'; rn.textContent = i + 1;
+    row.appendChild(rn);
+    // Right card
+    var rcell = document.createElement('div'); rcell.className = 'face-cell';
+    if (br) {
+      var brSub = null;
+      if (isC_right) {
+        var brNum = numOf(br.empl);
+        brSub = inv['C' + String(brNum).padStart(3,'0') + 'B'] || null;
+      }
+      rcell.appendChild(makeCard(br, brSub, rightSet[br.empl] ? 1 : 0.2));
+    }
+    row.appendChild(rcell);
+    content.appendChild(row);
+  }
+}
+
+function renderSingleSection(content, sideDef) {
+  var berths = getSide(sideDef.p, sideDef.s);
+  if (!berths.length) return;
+  var filtered = applyFilter(berths);
+  // Header
+  var hdr = document.createElement('div');
+  hdr.className = 'section-hdr';
+  hdr.textContent = sideDef.lbl + ' — ' + berths.filter(isSaisi).length + '/' + berths.length;
+  content.appendChild(hdr);
+  filtered.forEach(function(b) {
+    content.appendChild(makeCard(b, null, 1));
+  });
+}
+
+// ---- RENDER PONTON ----
+function renderPonton() {
+  var content = document.getElementById('content');
+  content.innerHTML = '';
+  var berths = Object.values(inv)
+    .filter(function(b) { return b.ponton === currentPonton; })
+    .sort(function(a, b) { return numOf(a.empl) - numOf(b.empl); });
+  if (!berths.length) return;
+
+  // For ponton C: group main+sub
+  if (currentPonton === 'C') {
+    var byNum = {};
+    berths.forEach(function(b) {
+      var n = numOf(b.empl);
+      if (!byNum[n]) byNum[n] = { main: null, sub: null };
+      if (b.empl.endsWith('B')) byNum[n].sub = b;
+      else byNum[n].main = b;
+    });
+    var nums = Object.keys(byNum).map(Number).sort(function(a,b){return a-b;});
+    // Split pairs left, impairs right
+    var leftNums  = nums.filter(function(n){return n%2===0;});
+    var rightNums = nums.filter(function(n){return n%2===1;});
+
+    var hdr = document.createElement('div');
+    hdr.className = 'face-hdr';
+    hdr.innerHTML = '<span class="fh-left">C pairs</span><span class="fh-mid"></span><span class="fh-right">C impairs</span>';
+    content.appendChild(hdr);
+
+    var maxR = Math.max(leftNums.length, rightNums.length);
+    for (var i = 0; i < maxR; i++) {
+      var row = document.createElement('div'); row.className = 'face-row';
+      var lc = document.createElement('div'); lc.className = 'face-cell';
+      if (leftNums[i] !== undefined) {
+        var g = byNum[leftNums[i]];
+        lc.appendChild(makeCard(g.main || g.sub, g.main ? g.sub : null, 1));
+      }
+      row.appendChild(lc);
+      var rn = document.createElement('div'); rn.className = 'rang'; rn.textContent = i+1;
+      row.appendChild(rn);
+      var rc = document.createElement('div'); rc.className = 'face-cell';
+      if (rightNums[i] !== undefined) {
+        var g2 = byNum[rightNums[i]];
+        rc.appendChild(makeCard(g2.main || g2.sub, g2.main ? g2.sub : null, 1));
+      }
+      row.appendChild(rc);
+      content.appendChild(row);
+    }
+    return;
+  }
+
+  // Other pontons: standard pair/impair face-to-face
+  var reg  = berths.filter(function(b){return numOf(b.empl)<200;});
+  var spec = berths.filter(function(b){return numOf(b.empl)>=200;});
+  var left  = applyFilter(reg.filter(function(b){return numOf(b.empl)%2===0;}));
+  var right = applyFilter(reg.filter(function(b){return numOf(b.empl)%2===1;}));
+
+  if (left.length || right.length) {
+    var hdr2 = document.createElement('div'); hdr2.className='face-hdr';
+    hdr2.innerHTML='<span class="fh-left">Pairs</span><span class="fh-mid"></span><span class="fh-right">Impairs</span>';
+    content.appendChild(hdr2);
+    var allLeft  = reg.filter(function(b){return numOf(b.empl)%2===0;});
+    var allRight = reg.filter(function(b){return numOf(b.empl)%2===1;});
+    var leftSet={}, rightSet={};
+    left.forEach(function(b){leftSet[b.empl]=true;});
+    right.forEach(function(b){rightSet[b.empl]=true;});
+    var maxR = Math.max(allLeft.length, allRight.length);
+    for (var j=0; j<maxR; j++) {
+      var bl=allLeft[j]||null, br=allRight[j]||null;
+      if (bl && !leftSet[bl.empl] && br && !rightSet[br.empl]) continue;
+      var row2=document.createElement('div'); row2.className='face-row';
+      var lc2=document.createElement('div'); lc2.className='face-cell';
+      if (bl) lc2.appendChild(makeCard(bl, null, leftSet[bl.empl]?1:0.2));
+      row2.appendChild(lc2);
+      var rn2=document.createElement('div'); rn2.className='rang'; rn2.textContent=j+1;
+      row2.appendChild(rn2);
+      var rc2=document.createElement('div'); rc2.className='face-cell';
+      if (br) rc2.appendChild(makeCard(br, null, rightSet[br.empl]?1:0.2));
+      row2.appendChild(rc2);
+      content.appendChild(row2);
+    }
+  }
+  if (spec.length) {
+    var sh=document.createElement('div'); sh.className='section-hdr'; sh.textContent='Emplacements spéciaux';
+    content.appendChild(sh);
+    applyFilter(spec).forEach(function(b){content.appendChild(makeCard(b,null,1));});
+  }
+}
+
+// ---- MAKE CARD ----
+function makeCard(b, subPlace, opacity) {
+  if (!b) return document.createElement('div');
+  var card = document.createElement('div');
+  card.className = 'card sc-' + b.statut + (b.ras?' ras':'') + (isSaisi(b)&&!b.ras?' touched':'');
+  if (opacity < 1) card.style.opacity = opacity;
+
+  // Indicators
+  var inds = '';
+  if (isAlert(b))      inds += '<span class="ind ind-alert" title="Alerte date">!</span>';
+  if (isIncoherent(b)) inds += '<span class="ind ind-incoh" title="Incoherence">~</span>';
+  if (isNonFacture(b)) inds += '<span class="ind ind-nf" title="Non facture">NF</span>';
+
+  // Payé pour escales
+  var payeHtml = '';
+  if (b.statut === 'ESCALE') {
+    payeHtml = '<span class="paye ' + (b.paye==='1'?'ok':'ko') + '">'
+      + (b.paye==='1'?'Payé':'Non payé') + '</span>';
+  }
+
+  // Date
+  var dateHtml = '';
+  var ds = '', dateLabel = '', late = false;
+  if (b.statut === 'ABSENT') {
+    if (b.retour) {
+      ds = b.retour; dateLabel = 'Ret. '; late = (b.retour < today);
+    } else if (b.depart) {
+      ds = b.depart; dateLabel = 'Parti le ';
+    }
+  } else if (b.statut === 'ESCALE') {
+    if (b.retour) {
+      ds = b.retour; dateLabel = 'Fin esc. '; late = (b.retour < today);
+    } else if (b.depart) {
+      ds = b.depart; dateLabel = 'Esc. dep. '; late = (b.depart < today);
+    }
+  } else if (b.retour) {
+    ds = b.retour; dateLabel = 'Ret. ';
+  }
+  if (ds) dateHtml = '<div class="card-date'+(late?' late':'')+'">'+dateLabel+ds+'</div>';
+
+  // Terrain saisie
+  var terrainHtml = '';
+  if (!b.ras && b.terrain) {
+    var tlbl = {PRESENT:'Présent',ABSENT:'Absent',ESCALE:'Escale',LIBRE:'Libre'}[b.terrain]||b.terrain;
+    terrainHtml = '<div class="card-terrain tc-'+b.terrain+'">&#10003; '+tlbl+'</div>';
+  }
+
+  // Obs
+  var obsHtml = b.obs ? '<div class="card-obs">'+b.obs+'</div>' : '';
+
+  // Sub-place (ponton C B)
+  var subHtml = '';
+  if (subPlace) {
+    var subSt = subPlace.statut;
+    var subNm = subPlace.bateau || 'libre';
+    subHtml = '<div class="card-sub sc-'+subSt+'"><span class="sub-lbl">'+subPlace.empl+'</span> '+subNm
+      + (subPlace.client?' <span class="sub-cl">'+subPlace.client+'</span>':'')
+      + '</div>';
+  }
+
+  var sP = (!b.ras && b.terrain==='PRESENT') ? ' sel' : '';
+  var sA = (!b.ras && b.terrain==='ABSENT')  ? ' sel' : '';
+  var sE = (!b.ras && b.terrain==='ESCALE')  ? ' sel' : '';
+  var sR = b.ras ? ' sel' : '';
+
+  card.innerHTML =
+    '<div class="card-body" data-e="'+b.empl+'">'
+    + '<div class="card-top">'
+    +   '<span class="card-empl">'+b.empl+'</span>'
+    +   inds + payeHtml
+    + '</div>'
+    + '<div class="card-name">'+(b.bateau||('<em class="muted">'+(b.statut==='LIBRE'?'libre':'--')+'</em>'))+'</div>'
+    + (b.client?'<div class="card-client">'+b.client+'</div>':'')
+    + dateHtml + terrainHtml + obsHtml + subHtml
+    + '</div>'
+    + '<div class="card-actions">'
+    + '<button class="btn-act btn-p'+sP+'" data-e="'+b.empl+'" data-t="PRESENT">&#10003;<span>Pres.</span></button>'
+    + '<button class="btn-act btn-a'+sA+'" data-e="'+b.empl+'" data-t="ABSENT">&#10007;<span>Abs.</span></button>'
+    + '<button class="btn-act btn-e'+sE+'" data-e="'+b.empl+'" data-t="ESCALE">&#9875;<span>Esc.</span></button>'
+    + '<button class="btn-act btn-r'+sR+'" data-e="'+b.empl+'" data-t="RAS">&#10003;&#10003;<span>RAS</span></button>'
+    + '</div>';
+
+  // Event delegation via data attributes — bound in render
+  return card;
+}
+
+// ---- BIND EVENTS after render ----
+var _bindTarget = null;
+function bindContent() {
+  var content = document.getElementById('content');
+  if (_bindTarget === content) return;
+  _bindTarget = content;
+
+  content.addEventListener('click', function(e) {
+    // Action buttons
+    var btn = e.target.closest('.btn-act');
+    if (btn) {
+      e.stopPropagation();
+      doAction(btn.dataset.e, btn.dataset.t);
+      return;
+    }
+    // Card body tap -> open panel
+    var body = e.target.closest('.card-body');
+    if (body) {
+      openPanel(body.dataset.e);
+    }
+  });
+}
+
+// Override renderCurrent to also bind
+var _origRenderCurrent = renderCurrent;
+renderCurrent = function() {
+  _origRenderCurrent();
+  bindContent();
+  // Adjust content top margin to sit below fixed topbar
+  var tb = document.getElementById('topbar');
+  var c  = document.getElementById('content');
+  if (tb && c) c.style.marginTop = (tb.offsetHeight + 6) + 'px';
+};
+
+// ---- PANEL ----
+function openPanel(empl) {
+  var b = inv[empl];
+  if (!b) return;
+  curEmpl = empl;
+  document.getElementById('p-empl').textContent = b.empl + ' — Ponton ' + b.ponton;
+  document.getElementById('p-name').textContent = b.bateau || '(sans nom)';
+  document.getElementById('p-sub').textContent  = [b.client, b.type, b.modele, b.immat].filter(Boolean).join(' · ');
+
+  // Alerts
+  var alerts = '';
+  if (isAlert(b)) alerts += '<div class="p-alert danger">'+(b.statut==='ESCALE'?'Date escale dépassée ('+b.depart+')':'Date retour dépassée ('+b.retour+')')+'</div>';
+  if (b.statut==='ABSENT'&&b.depart&&!b.retour) alerts += '<div class="p-alert warn">Absent sans date de retour</div>';
+  if (isIncoherent(b)) alerts += '<div class="p-alert warn">Incohérence PL='+b.statut+' / Terrain='+b.terrain+'</div>';
+  if (isNonFacture(b)) alerts += '<div class="p-alert info">Non facturé dans PortLogique</div>';
+  document.getElementById('p-alerts').innerHTML = alerts;
+
+  // Info rows
+  var rows = [
+    ['Statut PL', b.statut], ['Type', b.type],
+    ['Départ PL', b.depart||'--'], ['Retour PL', b.retour||'--'],
+    ['Modèle', b.modele||'--'], ['Immat.', b.immat||'--'],
+    ['Facturé', b.facture==='1'?'Oui':'Non'], ['Payé', b.paye==='1'?'Oui':'Non']
+  ];
+  document.getElementById('p-rows').innerHTML = rows.map(function(r) {
+    return '<div class="p-row"><span class="p-key">'+r[0]+'</span><span class="p-val">'+r[1]+'</span></div>';
+  }).join('');
+
+  // Status buttons
+  var cur = b.terrain, isRas = b.ras;
+  document.getElementById('p-sbtns').innerHTML = [
+    ['PRESENT','Présent','sbp'], ['ABSENT','Absent','sba'],
+    ['ESCALE','Escale','sbe'],   ['LIBRE','Libre','sbl'],
+    ['RAS','R.A.S.','sbc']
+  ].map(function(r) {
+    var sel = (r[0]==='RAS'&&isRas) || (!isRas&&cur===r[0]);
+    return '<button class="sbtn '+r[2]+(sel?' on':'')+'" data-t="'+r[0]+'">'+r[1]+'</button>';
+  }).join('');
+
+  document.getElementById('p-sbtns').querySelectorAll('.sbtn').forEach(function(btn) {
+    btn.onclick = function() {
+      doAction(empl, btn.dataset.t);
+      openPanel(empl); // refresh panel
+    };
+  });
+
+  document.getElementById('f-obs').value = b.obs || '';
+  document.getElementById('panel').classList.add('open');
+  document.getElementById('overlay').classList.add('on');
+}
+
+function closePanel() {
+  document.getElementById('panel').classList.remove('open');
+  document.getElementById('overlay').classList.remove('on');
+}
+
+document.getElementById('p-save').onclick = function() {
+  if (!curEmpl) return;
+  inv[curEmpl].obs = document.getElementById('f-obs').value.trim();
+  // If obs added and not yet in order, add it
+  if (inv[curEmpl].obs && saisieOrder.indexOf(curEmpl) < 0) {
+    saisieOrder.push(curEmpl);
+  }
+  saveState();
+  closePanel();
+  renderCurrent();
+};
+document.getElementById('p-close').onclick  = closePanel;
+document.getElementById('overlay').onclick  = closePanel;
+
+// ---- RAPPORT CORRECTIONS ----
+function actionPL(b) {
+  if (!b.terrain && !b.obs) return '--';
+  var t = b.terrain, s = b.statut;
+  if (t === 'PRESENT' && s === 'ABSENT')  return 'Saisir retour ou annuler absence';
+  if (t === 'PRESENT' && s === 'ESCALE')  return 'Clore escale';
+  if (t === 'ABSENT'  && s === 'PRESENT') return 'Saisir départ (date du jour)';
+  if (t === 'ESCALE'  && s === 'PRESENT') return 'Créer escale';
+  if (t === 'ESCALE'  && s === 'ABSENT')  return 'Modifier statut en escale';
+  if (t === 'PRESENT' && s === 'PRESENT' && b.obs) return 'Vérifier — obs terrain';
+  if (t === 'ABSENT'  && s === 'ABSENT')  return 'Vérifier date retour';
+  if (t === 'ESCALE'  && s === 'ESCALE') {
+    if (isAlert(b)) return 'Mettre à jour date retour escale';
+    return 'OK — surveiller';
+  }
+  if (!t && b.obs) return 'Vérifier — obs terrain';
+  return 'Vérifier';
+}
+
+function buildReport() {
+  var all = Object.values(inv);
+  // All touched (sauf RAS), in saisie order
+  var touched = saisieOrder
+    .map(function(e) { return inv[e]; })
+    .filter(function(b) { return b && !b.ras && (b.terrain || b.obs); });
+  // Also include any touched not in order (edge case)
+  all.forEach(function(b) {
+    if (!b.ras && (b.terrain || b.obs) && saisieOrder.indexOf(b.empl) < 0) {
+      touched.push(b);
+    }
+  });
+
+  var td = new Date().toLocaleDateString('fr-FR');
+  var nf = all.filter(isNonFacture);
+
+  var css = '*{box-sizing:border-box;margin:0;padding:0}'
+    + 'body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:12px}'
+    + 'h1{font-size:15px;color:#1A3A5C;margin-bottom:3px}'
+    + '.meta{font-size:10px;color:#666;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #1A3A5C}'
+    + 'h2{font-size:11px;color:#fff;background:#1A3A5C;padding:4px 8px;margin:10px 0 3px;border-radius:3px}'
+    + '.empty{color:#aaa;font-style:italic;font-size:10px;margin:3px 0 8px;padding-left:4px}'
+    + 'table{width:100%;border-collapse:collapse;margin-bottom:4px;font-size:10px}'
+    + 'th{background:#E8EEF5;color:#1A3A5C;padding:3px 5px;text-align:left;font-weight:700;border-bottom:2px solid #1A3A5C}'
+    + 'td{padding:3px 5px;border-bottom:1px solid #eee;vertical-align:top}'
+    + 'tr:nth-child(even) td{background:#F8FAFB}'
+    + '.act{font-weight:700;color:#1A3A5C}'
+    + '.warn{color:#B45309;font-weight:700}'
+    + '.bdg{display:inline-block;padding:1px 5px;border-radius:6px;font-size:9px;font-weight:700}'
+    + '.bp{background:#DCFCE7;color:#166534}.ba{background:#FEE2E2;color:#991B1B}'
+    + '.be{background:#FEF3C7;color:#92400E}.bl{background:#DBEAFE;color:#1E40AF}'
+    + '@media print{@page{margin:10mm;size:A4}body{padding:0}'
+    + 'h2{-webkit-print-color-adjust:exact;print-color-adjust:exact}tr{page-break-inside:avoid}}';
+
+  function bdg(t) {
+    var cls = {PRESENT:'bp',ABSENT:'ba',ESCALE:'be',LIBRE:'bl'}[t]||'';
+    return '<span class="bdg '+cls+'">'+t+'</span>';
+  }
+  function tbl(items, cols) {
+    if (!items.length) return '<p class="empty">Aucun élément</p>';
+    var h = '<table><tr>' + cols.map(function(c){return '<th>'+c[0]+'</th>';}).join('') + '</tr>';
+    items.forEach(function(b) {
+      h += '<tr>' + cols.map(function(c){return '<td>'+c[1](b)+'</td>';}).join('') + '</tr>';
+    });
+    return h + '</table>';
+  }
+
+  var h = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Rapport '+td+'</title>'
+    + '<style>'+css+'</style></head><body>';
+  h += '<h1>Rapport corrections — Port de Piriac-sur-Mer</h1>';
+  h += '<div class="meta">Date : <strong>'+td+'</strong>'
+    + ' &nbsp;|&nbsp; Saisies : <strong>'+touched.length+'</strong>'
+    + (nf.length?' &nbsp;|&nbsp; <span class="warn">'+nf.length+' non facturé(s)</span>':'')
+    + '</div>';
+
+  h += '<h2>Saisies terrain — dans l\'ordre de la tournée ('+touched.length+')</h2>';
+  h += tbl(touched, [
+    ['Ponton',   function(b){return b.ponton;}],
+    ['Empl.',    function(b){return '<strong>'+b.empl+'</strong>';}],
+    ['Bateau',   function(b){return b.bateau||'--';}],
+    ['Client',   function(b){return b.client||'--';}],
+    ['Statut PL',function(b){return bdg(b.statut);}],
+    ['Constaté', function(b){return b.terrain?bdg(b.terrain):'--';}],
+    ['Obs.',     function(b){return b.obs||'--';}],
+    ['Action PortLogique', function(b){return '<span class="act">'+actionPL(b)+'</span>';}]
+  ]);
+
+  if (nf.length) {
+    h += '<h2>Non facturés ('+nf.length+') — vérifier et facturer dans PortLogique</h2>';
+    h += tbl(nf, [
+      ['Ponton',  function(b){return b.ponton;}],
+      ['Empl.',   function(b){return '<strong>'+b.empl+'</strong>';}],
+      ['Bateau',  function(b){return b.bateau||'--';}],
+      ['Modèle',  function(b){return b.modele||'--';}],
+      ['Immat.',  function(b){return b.immat||'--';}],
+      ['Client',  function(b){return b.client||'--';}]
+    ]);
+  }
+
+  h += '</body></html>';
+  return h;
+}
+
+document.getElementById('btn-rapport').onclick = function() {
+  if (!Object.keys(inv).length) { showToast('Aucune donnée chargée'); return; }
+  var blob = new Blob([buildReport()], {type:'text/html;charset=utf-8'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href = url; a.download = 'rapport_piriac_'+today+'.html'; a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);}, 5000);
+  showToast('Rapport téléchargé');
+};
+
+document.getElementById('btn-reset').onclick = function() {
+  if (!confirm('Effacer toutes les saisies ?')) return;
+  Object.values(inv).forEach(function(b){b.terrain=null;b.obs='';b.ras=false;});
+  saisieOrder = [];
+  clearState();
+  renderCurrent();
+  updateTopbar();
+  showToast('Saisies effacées');
+};
+
+// ---- INIT ----
+showLoad();
+
+</script>
+</body>
+</html>
